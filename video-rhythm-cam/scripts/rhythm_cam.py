@@ -51,22 +51,22 @@ def extract_audio(video_path: str, audio_path: str) -> bool:
         return False
 
 
-def detect_beats(audio_path: str, sensitivity: float = 0.5) -> Tuple[List[float], float]:
+def detect_beats_with_strength(audio_path: str, sensitivity: float = 0.5) -> Tuple[List[Tuple[float, float]], float]:
     """
-    检测音频中的节拍点
+    检测音频中的节拍点，并区分重拍和弱拍
 
     Args:
         audio_path: 音频文件路径
         sensitivity: 节拍检测灵敏度 (0.0-1.0), 越高检测到的节拍越多
 
     Returns:
-        (节拍时间列表, 音频时长)
+        ((时间, 强度) 列表, 音频时长)
     """
     import librosa
     import soundfile as sf
 
     try:
-        print("🎵 正在分析音乐节奏...")
+        print("🎵 正在分析音乐节奏和强度...")
 
         # 加载音频
         y, sr = librosa.load(audio_path)
@@ -78,19 +78,33 @@ def detect_beats(audio_path: str, sensitivity: float = 0.5) -> Tuple[List[float]
         # 将帧转换为时间(秒)
         beat_times = librosa.frames_to_time(beats, sr=sr)
 
+        # 计算节拍强度
+        onset_env = librosa.onset.onset_strength(y=y, sr=sr)
+        beat_frames = librosa.time_to_frames(beat_times, sr=sr)
+        beat_strength = onset_env[beat_frames]
+
+        # 归一化强度到 0-1 范围
+        if len(beat_strength) > 0:
+            beat_strength_normalized = (beat_strength - beat_strength.min()) / (beat_strength.max() - beat_strength.min() + 1e-8)
+        else:
+            beat_strength_normalized = beat_strength
+
         # 根据灵敏度过滤节拍
         if sensitivity < 1.0:
-            # 计算节拍强度
-            onset_env = librosa.onset.onset_strength(y=y, sr=sr)
-            beat_strength = onset_env[librosa.time_to_frames(beat_times, sr=sr)]
-
-            # 只保留强度高于阈值的节拍
-            threshold = np.percentile(beat_strength, (1 - sensitivity) * 100)
-            mask = beat_strength >= threshold
+            threshold = np.percentile(beat_strength_normalized, (1 - sensitivity) * 100)
+            mask = beat_strength_normalized >= threshold
             beat_times = beat_times[mask]
+            beat_strength_normalized = beat_strength_normalized[mask]
 
-        print(f"✅ 检测到 {len(beat_times)} 个节拍点 (BPM: {float(tempo):.1f})")
-        return beat_times.tolist(), duration
+        # 组合时间和强度
+        beats_with_strength = list(zip(beat_times, beat_strength_normalized))
+
+        # 统计重拍数量
+        strong_beats = sum(1 for _, strength in beats_with_strength if strength > 0.6)
+        print(f"✅ 检测到 {len(beats_with_strength)} 个节拍点 (BPM: {float(tempo):.1f})")
+        print(f"   其中重拍: {strong_beats} 个")
+
+        return beats_with_strength, duration
 
     except Exception as e:
         print(f"❌ 节拍检测失败: {e}")
@@ -203,9 +217,9 @@ def process_video(video_path: str, output_path: str,
         if not extract_audio(video_path, audio_path):
             return False
 
-        # 步骤2: 检测节拍
-        beat_times, duration = detect_beats(audio_path, sensitivity)
-        if not beat_times:
+        # 步骤2: 检测节拍（带强度）
+        beats_with_strength, duration = detect_beats_with_strength(audio_path, sensitivity)
+        if not beats_with_strength:
             print("❌ 未检测到节拍")
             return False
 
@@ -229,45 +243,65 @@ def process_video(video_path: str, output_path: str,
             # 创建临时无音频视频文件
             temp_video_no_audio = os.path.join(tmpdir, "temp_no_audio.mp4")
 
-            # 使用 H.264 编码器获得更好的质量
+            # 使用 H.264 编码器，设置高质量参数
             fourcc = cv2.VideoWriter_fourcc(*'avc1')
-            out = cv2.VideoWriter(temp_video_no_audio, fourcc, fps, (w, h))
+            # 提高编码质量
+            out = cv2.VideoWriter(temp_video_no_audio, fourcc, fps, (w, h),
+                                 [cv2.VIDEOWRITER_PROP_QUALITY, 95])
 
             # 逐帧处理
             total_frames = int(duration * fps)
             for i in range(total_frames):
                 t = i / fps
 
-                # 获取原始帧
+                # 获取原始帧（保持原始色彩空间）
                 frame = video.get_frame(t)
 
-                # 计算缩放因子
-                if beat_times:
-                    beat_deltas = [abs(t - beat) for beat in beat_times]
-                    nearest_beat_dist = min(beat_deltas)
+                # 计算缩放因子 - 基于节拍强度
+                if beats_with_strength:
+                    # 找到最近的节拍及其强度
+                    min_dist = float('inf')
+                    nearest_strength = 0.0
 
-                    if nearest_beat_dist < zoom_duration:
-                        progress = nearest_beat_dist / zoom_duration
-                        zoom_factor = zoom_max - (zoom_max - zoom_min) * progress
+                    for beat_time, beat_strength in beats_with_strength:
+                        dist = abs(t - beat_time)
+                        if dist < min_dist:
+                            min_dist = dist
+                            nearest_strength = beat_strength
+
+                    if min_dist < zoom_duration:
+                        # 根据强度动态调整缩放幅度
+                        # 重拍（强度>0.6）: zoom_min 到 zoom_max
+                        # 弱拍（强度<=0.6）: zoom_min 到 (zoom_min + zoom_max) / 2
+                        if nearest_strength > 0.6:
+                            # 重拍 - 更大的缩放幅度
+                            max_zoom = zoom_max
+                        else:
+                            # 弱拍 - 较小的缩放幅度
+                            max_zoom = zoom_min + (zoom_max - zoom_min) * 0.6
+
+                        progress = min_dist / zoom_duration
+                        zoom_factor = max_zoom - (max_zoom - zoom_min) * progress
                     else:
                         zoom_factor = zoom_min
                 else:
                     zoom_factor = zoom_min
 
                 # 应用缩放
-                if zoom_factor > zoom_min:
+                if zoom_factor > zoom_min * 1.01:  # 稍微大于min才应用缩放
                     new_w, new_h = int(w / zoom_factor), int(h / zoom_factor)
                     x1 = (w - new_w) // 2
                     y1 = (h - new_h) // 2
                     x2 = x1 + new_w
                     y2 = y1 + new_h
 
-                    # OpenCV 使用 BGR 格式
+                    # 保持色彩空间：RGB -> BGR (OpenCV格式)
                     frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                     cropped = frame_bgr[y1:y2, x1:x2]
                     # 使用 LANCZOS 插值获得更好的缩放质量
                     frame = cv2.resize(cropped, (w, h), interpolation=cv2.INTER_LANCZOS4)
                 else:
+                    # 保持原色彩
                     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
                 out.write(frame)
@@ -300,15 +334,22 @@ def process_video(video_path: str, output_path: str,
             else:
                 final_video = video_processed
 
-            # 使用高比特率输出以保证质量
+            # 使用高质量参数输出
             final_video.write_videofile(
                 output_path,
                 codec='libx264',
                 audio_codec='aac',
-                bitrate='8000k'  # 高比特率保证质量
+                bitrate='12000k',  # 更高比特率保证质量
+                preset='slow',  # 使用慢速预设获得更好的压缩
+                ffmpeg_params=['-crf', '18',  # CRF 18 为高质量
+                               '-pix_fmt', 'yuv420p',  # 标准像素格式
+                               '-colorspace', 'bt709',  # 保持色彩空间
+                               '-movflags', '+faststart']  # 优化网络播放
             )
 
             video_processed.close()
+            if temp_audio_path is not None:
+                audio_final.close()
             final_video.close()
 
             print(f"✅ 视频处理完成!")
