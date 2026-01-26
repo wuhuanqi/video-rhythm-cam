@@ -19,6 +19,7 @@ from pydantic import BaseModel
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 from detect_beats import detect_beats_with_strength, beats_to_json
+from audio_alignment import align_and_replace_audio
 import subprocess
 import json
 
@@ -55,6 +56,17 @@ class ExportRequest(BaseModel):
 class ExportResponse(BaseModel):
     success: bool
     outputPath: Optional[str] = None
+    error: Optional[str] = None
+
+class AudioAlignRequest(BaseModel):
+    danceVideoPath: str
+    referenceVideoPath: str
+    maxOffset: float = 5.0
+
+class AudioAlignResponse(BaseModel):
+    success: bool
+    outputPath: Optional[str] = None
+    offset: Optional[float] = None
     error: Optional[str] = None
 
 # 创建 FastAPI 应用
@@ -370,6 +382,63 @@ async def export_video(request: ExportRequest):
         return ExportResponse(
             success=False,
             error=f"导出异常: {str(e)}"
+        )
+
+@app.post("/api/align-audio", response_model=AudioAlignResponse)
+async def align_audio(request: AudioAlignRequest):
+    """对齐两个视频的音频并合成"""
+    try:
+        # 验证文件存在
+        if not os.path.exists(request.danceVideoPath):
+            return AudioAlignResponse(
+                success=False,
+                error="舞蹈视频文件不存在"
+            )
+
+        if not os.path.exists(request.referenceVideoPath):
+            return AudioAlignResponse(
+                success=False,
+                error="参考视频文件不存在"
+            )
+
+        # 构建输出文件名
+        input_filename = Path(request.danceVideoPath).stem
+        output_filename = f"{input_filename}_aligned.mp4"
+        output_path = OUTPUT_DIR / output_filename
+
+        print(f"🎵 开始音频对齐...")
+        print(f"💃 舞蹈视频: {request.danceVideoPath}")
+        print(f"🎵 参考视频: {request.referenceVideoPath}")
+        print(f"📁 输出: {output_path}")
+
+        # 调用音频对齐函数
+        success, offset = align_and_replace_audio(
+            request.danceVideoPath,
+            request.referenceVideoPath,
+            str(output_path),
+            request.maxOffset
+        )
+
+        if success:
+            print(f"✅ 音频对齐成功: {output_path}")
+            return AudioAlignResponse(
+                success=True,
+                outputPath=str(output_path),
+                offset=offset
+            )
+        else:
+            return AudioAlignResponse(
+                success=False,
+                error="音频对齐失败"
+            )
+
+    except Exception as e:
+        print(f"❌ 音频对齐异常: {e}")
+        import traceback
+        traceback.print_exc()
+        return AudioAlignResponse(
+            success=False,
+            error=f"音频对齐异常: {str(e)}"
         )
 
 @app.get("/api/download/{filename}")

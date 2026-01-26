@@ -26,6 +26,10 @@ interface RhythmCamStore {
   currentVideo: VideoInfo | null;
   setCurrentVideo: (video: VideoInfo | null) => void;
 
+  // 参考视频（用于音频对齐）
+  referenceVideo: VideoInfo | null;
+  setReferenceVideo: (video: VideoInfo | null) => void;
+
   // 节奏数据
   beatsData: BeatsData | null;
   setBeatsData: (data: BeatsData | null) => void;
@@ -57,6 +61,10 @@ interface RhythmCamStore {
   isExporting: boolean;
   exportProgress: number;
   setExporting: (exporting: boolean, progress?: number) => void;
+
+  // 音频对齐状态
+  isAligning: boolean;
+  setAligning: (aligning: boolean) => void;
 }
 
 const defaultParameters = {
@@ -71,6 +79,9 @@ export const useRhythmCamStore = create<RhythmCamStore>((set) => ({
   // 初始状态
   currentVideo: null,
   setCurrentVideo: (video) => set({ currentVideo: video }),
+
+  referenceVideo: null,
+  setReferenceVideo: (video) => set({ referenceVideo: video }),
 
   beatsData: null,
   setBeatsData: (data) => set({ beatsData: data }),
@@ -98,4 +109,7 @@ export const useRhythmCamStore = create<RhythmCamStore>((set) => ({
   exportProgress: 0,
   setExporting: (exporting, progress = 0) =>
     set({ isExporting: exporting, exportProgress: progress }),
+
+  isAligning: false,
+  setAligning: (aligning) => set({ isAligning: aligning }),
 }));

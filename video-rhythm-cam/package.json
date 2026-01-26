@@ -1,0 +1,29 @@
+{
+  "name": "video-rhythm-cam",
+  "version": "2.0.0",
+  "description": "Video Rhythm Cam - 智能节奏运镜工具",
+  "scripts": {
+    "dev": "bash start.sh",
+    "dev:api": "cd python-api && python api.py",
+    "dev:web": "cd web && npm run dev",
+    "dev:remotion": "cd remotion && npm start",
+    "install:all": "npm install && cd web && npm install && cd ../remotion && npm install && cd ../python-api && pip install -r requirements.txt",
+    "build": "cd web && npm run build",
+    "start": "cd web && npm start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/video-rhythm-cam.git"
+  },
+  "keywords": [
+    "video",
+    "rhythm",
+    "beat",
+    "camera",
+    "ffmpeg",
+    "nextjs",
+    "remotion"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

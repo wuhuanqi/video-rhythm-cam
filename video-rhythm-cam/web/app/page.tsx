@@ -43,11 +43,11 @@ export default function Home() {
               文档
             </Link>
             <Link
-              href="/app"
+              href="/workbench"
               className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
             >
               <Play className="w-4 h-4" />
-              在线体验
+              开始使用
             </Link>
             <a
               href="https://github.com/wuhuanqi/video-rhythm-cam"
@@ -90,7 +90,7 @@ export default function Home() {
           {/* CTA 按钮 */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <Link
-              href="/app"
+              href="/workbench"
               className="group bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 flex items-center justify-center gap-2"
             >
               <Play className="w-5 h-5" />
@@ -291,7 +291,7 @@ export default function Home() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                href="/app"
+                href="/workbench"
                 className="bg-white text-slate-900 hover:bg-gray-100 px-8 py-4 rounded-xl text-lg font-semibold transition-all flex items-center justify-center gap-2"
               >
                 <Play className="w-5 h-5" />
