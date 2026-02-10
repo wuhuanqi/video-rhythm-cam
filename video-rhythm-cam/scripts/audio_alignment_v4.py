@@ -10,6 +10,7 @@ import numpy as np
 import librosa
 import soundfile as sf
 from typing import Tuple
+from tqdm import tqdm
 
 
 def extract_audio_from_video(video_path: str, output_audio: str) -> bool:
@@ -26,7 +27,26 @@ def extract_audio_from_video(video_path: str, output_audio: str) -> bool:
             video.close()
             return False
 
-        audio.write_audiofile(output_audio, logger=None)
+        # 创建进度条
+        with tqdm(
+            total=100,
+            desc=f"  提取音频 {os.path.basename(video_path)[:20]}",
+            unit="%",
+            ncols=80,
+            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}"
+        ) as pbar:
+            def progress_callback(progress):
+                pbar.update(int(progress * 100) - pbar.n)
+
+            # 注意：moviepy 不直接支持进度回调，所以我们用估算
+            for i in range(10):
+                pbar.update(10)
+                import time
+                time.sleep(0.05)
+
+            audio.write_audiofile(output_audio, logger=None)
+            pbar.update(100 - pbar.n)
+
         audio.close()
         video.close()
 
@@ -57,7 +77,9 @@ def find_best_match_simple(
         print("🔍 正在分析音频...")
 
         # 加载音频
+        print("  [1/4] 加载参考音频...")
         y_ref, sr = librosa.load(reference_audio_path, sr=22050)
+        print("  [2/4] 加载原始音频...")
         y_orig, sr_orig = librosa.load(original_audio_path, sr=22050)
 
         ref_duration = len(y_ref) / sr
@@ -74,23 +96,31 @@ def find_best_match_simple(
         hop_length = 512
         n_mfcc = 13
 
-        print(f"   正在提取MFCC特征...")
+        print("  [3/4] 提取MFCC特征...")
         # 只提取前10秒的特征进行快速验证
         compare_duration = min(10.0, ref_duration, orig_duration)
         compare_samples = int(compare_duration * sr)
 
-        mfcc_ref = librosa.feature.mfcc(
-            y=y_ref[:compare_samples],
-            sr=sr,
-            n_mfcc=n_mfcc,
-            hop_length=hop_length
-        )
-        mfcc_orig = librosa.feature.mfcc(
-            y=y_orig[:compare_samples],
-            sr=sr,
-            n_mfcc=n_mfcc,
-            hop_length=hop_length
-        )
+        with tqdm(total=2, desc="    提取特征", unit="个", ncols=70, leave=False) as pbar:
+            mfcc_ref = librosa.feature.mfcc(
+                y=y_ref[:compare_samples],
+                sr=sr,
+                n_mfcc=n_mfcc,
+                hop_length=hop_length
+            )
+            pbar.update(1)
+            pbar.set_description("    参考音频")
+
+            mfcc_orig = librosa.feature.mfcc(
+                y=y_orig[:compare_samples],
+                sr=sr,
+                n_mfcc=n_mfcc,
+                hop_length=hop_length
+            )
+            pbar.update(1)
+            pbar.set_description("    原始音频")
+
+        print("  [4/4] 计算相似度...")
 
         # 计算开头部分的相关性
         min_frames = min(mfcc_ref.shape[1], mfcc_orig.shape[1])
@@ -106,36 +136,45 @@ def find_best_match_simple(
             # 范围：从0秒到duration_diff秒
             search_offsets = np.linspace(0, min(duration_diff, max_offset), 20)
 
-            for test_offset in search_offsets:
-                start_sample = int(test_offset * sr)
-                if start_sample + compare_samples > len(y_ref):
-                    continue
+            with tqdm(
+                total=len(search_offsets),
+                desc="  匹配音频位置",
+                unit="次",
+                ncols=80
+            ) as pbar:
+                for test_offset in search_offsets:
+                    start_sample = int(test_offset * sr)
+                    if start_sample + compare_samples > len(y_ref):
+                        continue
 
-                # 提取参考音频从test_offset开始的片段
-                mfcc_ref_slice = librosa.feature.mfcc(
-                    y=y_ref[start_sample:start_sample + compare_samples],
-                    sr=sr,
-                    n_mfcc=n_mfcc,
-                    hop_length=hop_length
-                )
+                    # 提取参考音频从test_offset开始的片段
+                    mfcc_ref_slice = librosa.feature.mfcc(
+                        y=y_ref[start_sample:start_sample + compare_samples],
+                        sr=sr,
+                        n_mfcc=n_mfcc,
+                        hop_length=hop_length
+                    )
 
-                # 计算相关性
-                frames = min(mfcc_ref_slice.shape[1], mfcc_orig.shape[1])
-                if frames < 10:
-                    continue
+                    # 计算相关性
+                    frames = min(mfcc_ref_slice.shape[1], mfcc_orig.shape[1])
+                    if frames < 10:
+                        continue
 
-                # 计算平均相关性
-                correlations = []
-                for i in range(n_mfcc):
-                    corr = np.corrcoef(mfcc_ref_slice[i, :frames], mfcc_orig[i, :frames])[0, 1]
-                    if not np.isnan(corr):
-                        correlations.append(corr)
+                    # 计算平均相关性
+                    correlations = []
+                    for i in range(n_mfcc):
+                        corr = np.corrcoef(mfcc_ref_slice[i, :frames], mfcc_orig[i, :frames])[0, 1]
+                        if not np.isnan(corr):
+                            correlations.append(corr)
 
-                if correlations:
-                    score = np.mean(correlations)
-                    if score > best_score:
-                        best_score = score
-                        best_offset = test_offset
+                    if correlations:
+                        score = np.mean(correlations)
+                        if score > best_score:
+                            best_score = score
+                            best_offset = test_offset
+
+                    pbar.update(1)
+                    pbar.set_postfix({"最佳相似度": f"{best_score:.4f}"})
 
             print(f"\n✅ 最佳匹配位置:")
             print(f"   偏移量: {best_offset:+.3f}秒")
@@ -294,6 +333,8 @@ def replace_audio_in_video(
     """
     try:
         from moviepy import VideoFileClip, AudioFileClip
+        import threading
+        import time
 
         print(f"🎬 正在合成视频...")
 
@@ -315,13 +356,44 @@ def replace_audio_in_video(
         # 设置音频
         final_video = video.with_audio(new_audio)
 
-        # 写入输出文件
-        final_video.write_videofile(
-            output_video_path,
-            codec='libx264',
-            audio_codec='aac',
-            logger=None
-        )
+        # 创建进度条
+        with tqdm(
+            total=100,
+            desc=f"  合成视频 {os.path.basename(output_video_path)[:20]}",
+            unit="%",
+            ncols=80,
+            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}"
+        ) as pbar:
+            # 标记是否完成
+            write_done = [False]
+
+            # 启动后台线程模拟进度
+            def update_progress():
+                progress = 0
+                while not write_done[0] and progress < 95:
+                    # 模拟进度增长（非线性的）
+                    increment = max(0.5, 5 - progress * 0.05)
+                    progress = min(progress + increment, 95)
+                    pbar.n = int(progress)
+                    pbar.refresh()
+                    time.sleep(0.2)
+
+            progress_thread = threading.Thread(target=update_progress)
+            progress_thread.daemon = True
+            progress_thread.start()
+
+            # 写入输出文件
+            final_video.write_videofile(
+                output_video_path,
+                codec='libx264',
+                audio_codec='aac',
+                logger=None
+            )
+
+            # 标记完成
+            write_done[0] = True
+            progress_thread.join(timeout=1)
+            pbar.update(100 - pbar.n)
 
         # 清理
         video.close()
