@@ -204,7 +204,7 @@ def align_and_replace_audio(
             # 调整音频长度以匹配视频
             if new_audio.duration > dance_video.duration:
                 # 音频比视频长，裁剪音频
-                new_audio = new_audio.subclip(0, dance_video.duration)
+                new_audio = new_audio.subclipped(0, dance_video.duration)
 
             # 裁剪视频长度以匹配音频（如果音频更短）
             if dance_video.duration > new_audio.duration:

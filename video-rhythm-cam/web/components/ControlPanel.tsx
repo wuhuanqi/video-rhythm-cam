@@ -104,7 +104,7 @@ export function ControlPanel() {
         document.body.removeChild(link);
 
         setExporting(false, 0);
-        alert(`✅ 导出成功！文件已开始下载`);
+        alert(`✅ 导出成功！文件已开始下载\n\n📁 文件名: ${filename}`);
       } else {
         throw new Error(result.error || "导出失败");
       }
@@ -332,6 +332,12 @@ export function ControlPanel() {
                   style={{ width: `${exportProgress}%` }}
                 />
               </div>
+              <p className="text-xs text-center text-muted-foreground mt-1">
+                {exportProgress < 30 ? "🎬 正在渲染视频..." :
+                 exportProgress < 70 ? "🎨 应用运镜效果..." :
+                 exportProgress < 95 ? "💾 正在编码输出..." :
+                 "✅ 即将完成！"} ({exportProgress}%)
+              </p>
             </div>
           )}
         </div>

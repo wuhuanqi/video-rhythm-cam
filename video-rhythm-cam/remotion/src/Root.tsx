@@ -9,7 +9,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="PromoVideo"
         component={PromoVideo}
-        durationInFrames={900} // 30 秒 @ 30fps
+        durationInFrames={$300} // 30 秒 @ 30fps
         fps={30}
         width={1920}
         height={1080}
@@ -19,7 +19,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="RhythmVideo"
         component={RhythmVideo}
-        durationInFrames={952} // 默认 10 秒 @ 30fps，会根据实际视频调整
+        durationInFrames={$300} // 默认 10 秒 @ 30fps，会根据实际视频调整
         fps={30}
         width={1920}
         height={1080}

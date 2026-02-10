@@ -90,14 +90,15 @@ def process_video_with_remotion(
     zoom_max: float = 1.3,
     zoom_duration: float = 0.2,
     quality: int = 90,
-    keep_temp: bool = False
+    keep_temp: bool = False,
+    progress_callback = None
 ) -> bool:
     """
     使用 Remotion 处理视频
 
     Args:
         video_path: 输入视频路径
-        output_path: 输出视频路径
+        output_path: 输出视频路径（如果为 None，自动生成带参数的文件名）
         remotion_dir: Remotion 项目目录
         sensitivity: 节拍检测灵敏度 (0.0-1.0)
         zoom_min: 最小缩放比例
@@ -105,6 +106,7 @@ def process_video_with_remotion(
         zoom_duration: 缩放持续时间(秒)
         quality: 渲染质量 (1-100)
         keep_temp: 是否保留临时文件
+        progress_callback: 进度回调函数(progress: int)
 
     Returns:
         是否成功
@@ -123,6 +125,15 @@ def process_video_with_remotion(
         return False
 
     print(f"📹 视频信息: {duration:.2f}秒, {fps:.2f}fps")
+
+    # 如果没有指定输出路径，生成带参数的文件名
+    if output_path is None:
+        import datetime
+        video_name = Path(video_path).stem
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"{video_name}_rhythm_s{sensitivity}_z{zoom_min}-{zoom_max}_q{quality}_{timestamp}.mp4"
+        output_path = str(Path(video_path).parent / output_filename)
+        print(f"📁 自动生成输出路径: {output_path}")
 
     # 创建临时目录
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -160,16 +171,25 @@ def process_video_with_remotion(
         if not remotion.setup_remotion_project(video_path, beats_data, video_name="input.mp4"):
             return False
 
-        # 步骤4: 渲染视频
+        # 步骤4: 渲染视频（带进度）
         try:
             print(f"🎬 开始渲染视频到: {output_path}")
+
+            # 打印渲染参数
+            print(f"📊 渲染参数:")
+            print(f"   - 灵敏度: {sensitivity}")
+            print(f"   - 缩放范围: {zoom_min}x - {zoom_max}x")
+            print(f"   - 缩放时长: {zoom_duration}秒")
+            print(f"   - 质量: {quality}")
+
             success = remotion.render_video(
                 output_path=output_path,
                 composition="RhythmVideo",
                 codec="h264",
                 pixel_format="yuv420p",
                 quality=quality,
-                concurrency=1
+                concurrency=1,
+                progress_callback=progress_callback
             )
 
             if success:

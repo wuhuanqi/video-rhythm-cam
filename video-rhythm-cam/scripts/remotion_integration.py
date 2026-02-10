@@ -109,7 +109,8 @@ class RemotionIntegration:
         codec: str = "h264",
         pixel_format: str = "yuv420p",
         quality: int = 90,
-        concurrency: int = 1
+        concurrency: int = 1,
+        progress_callback = None
     ) -> bool:
         """
         使用 Remotion CLI 渲染视频
@@ -121,6 +122,7 @@ class RemotionIntegration:
             pixel_format: 像素格式
             quality: 画质 (1-100)
             concurrency: 并发渲染实例数
+            progress_callback: 进度回调函数(progress: int)
 
         Returns:
             是否成功
@@ -135,28 +137,51 @@ class RemotionIntegration:
                 "--output", output_path,
                 "--codec", codec,
                 "--pixel-format", pixel_format,
-                "--jpeg-quality", str(quality),  # 修复: --quality -> --jpeg-quality
+                "--jpeg-quality", str(quality),
                 "--concurrency", str(concurrency),
                 "--overwrite"
             ]
 
             print(f"🔧 执行命令: {' '.join(cmd)}")
 
-            # 运行命令
-            result = subprocess.run(
+            # 运行命令，实时捕获输出
+            process = subprocess.Popen(
                 cmd,
                 cwd=self.remotion_dir,
-                capture_output=True,
-                text=True
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                universal_newlines=True
             )
 
-            if result.returncode == 0:
+            # 实时读取输出并解析进度
+            for line in process.stdout:
+                line = line.strip()
+                if line:
+                    print(line)  # 打印原始输出
+
+                    # 解析 Remotion 的进度输出
+                    # Remotion 输出格式: "[123/300] 41%"
+                    if "[" in line and "%" in line:
+                        try:
+                            # 提取百分比
+                            percent_str = line.split("%")[0].split()[-1]
+                            progress = int(float(percent_str))
+
+                            if progress_callback:
+                                progress_callback(progress)
+                        except (ValueError, IndexError):
+                            pass
+
+            # 等待进程结束
+            returncode = process.wait()
+
+            if returncode == 0:
                 print("✅ 视频渲染成功")
                 return True
             else:
-                print(f"❌ 视频渲染失败")
-                print(f"stdout: {result.stdout}")
-                print(f"stderr: {result.stderr}")
+                print(f"❌ 视频渲染失败 (返回码: {returncode})")
                 return False
 
         except Exception as e:

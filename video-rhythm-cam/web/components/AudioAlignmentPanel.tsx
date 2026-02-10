@@ -2,29 +2,66 @@
 
 import { useState } from "react";
 import { useRhythmCamStore } from "@/lib/store";
-import { Music, Upload, RefreshCw, CheckCircle } from "lucide-react";
+import { Music, Upload, RefreshCw, CheckCircle, Video, ArrowDown } from "lucide-react";
 
 export function AudioAlignmentPanel() {
   const {
     currentVideo,
     referenceVideo,
+    setCurrentVideo,
     setReferenceVideo,
     isAligning,
     setAligning,
     setError,
   } = useRhythmCamStore();
 
-  const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingDance, setIsUploadingDance] = useState(false);
+  const [isUploadingRef, setIsUploadingRef] = useState(false);
   const [alignResult, setAlignResult] = useState<{ success: boolean; offset?: number; message?: string } | null>(null);
+
+  // 上传舞蹈视频
+  const handleUploadDance = async (file: File) => {
+    setIsUploadingDance(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("http://localhost:8000/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("上传失败");
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setCurrentVideo({
+          filename: result.filename,
+          path: result.path,
+          duration: result.duration,
+          fps: result.fps,
+          size: 0,
+        });
+        setAlignResult(null);
+      } else {
+        throw new Error(result.error || "上传失败");
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "上传失败");
+      alert(`❌ ${error instanceof Error ? error.message : "上传失败"}`);
+    } finally {
+      setIsUploadingDance(false);
+    }
+  };
 
   // 上传参考视频
   const handleUploadReference = async (file: File) => {
-    if (!currentVideo) {
-      alert("请先上传舞蹈视频");
-      return;
-    }
-
-    setIsUploading(true);
+    setIsUploadingRef(true);
     setError(null);
 
     try {
@@ -48,7 +85,7 @@ export function AudioAlignmentPanel() {
           path: result.path,
           duration: result.duration,
           fps: result.fps,
-          size: 0, // 不需要 size
+          size: 0,
         });
         setAlignResult(null);
       } else {
@@ -58,7 +95,7 @@ export function AudioAlignmentPanel() {
       setError(error instanceof Error ? error.message : "上传失败");
       alert(`❌ ${error instanceof Error ? error.message : "上传失败"}`);
     } finally {
-      setIsUploading(false);
+      setIsUploadingRef(false);
     }
   };
 
@@ -93,10 +130,8 @@ export function AudioAlignmentPanel() {
       const result = await response.json();
 
       if (result.success && result.outputPath) {
-        // 提取文件名
         const filename = result.outputPath.split("/").pop();
 
-        // 下载视频
         const downloadUrl = `http://localhost:8000/api/download/${filename}`;
         const link = document.createElement("a");
         link.href = downloadUrl;
@@ -126,87 +161,145 @@ export function AudioAlignmentPanel() {
     }
   };
 
-  // 文件输入处理
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleUploadReference(file);
-    }
-  };
-
   return (
-    <div className="space-y-6">
-      {/* 参考视频上传 */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold flex items-center gap-2">
-          <Music className="w-4 h-4" />
-          参考视频（高质量音频）
-        </h3>
-        <p className="text-xs text-muted-foreground">
-          上传一个包含同一首音乐的参考视频，系统会自动对齐音频并替换到舞蹈视频中
+    <div className="space-y-4">
+      {/* 步骤说明 */}
+      <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-xs text-blue-500">
+        <p className="font-medium mb-2">🎯 音频对齐功能</p>
+        <p>用参考视频的高质量音频替换你舞蹈视频的音频，系统会自动对齐卡点。</p>
+      </div>
+
+      {/* 第一步：舞蹈视频 */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-bold">1</span>
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Video className="w-4 h-4" />
+            舞蹈视频（你的录制）
+          </h3>
+        </div>
+        <p className="text-xs text-muted-foreground ml-7">
+          你自己拍的舞蹈视频，音质可能不太好
         </p>
 
-        <div className="space-y-3">
-          {/* 上传按钮 */}
-          <label className="block">
-            <input
-              type="file"
-              accept="video/*"
-              onChange={handleFileChange}
-              disabled={isUploading || isAligning}
-              className="hidden"
-              id="reference-video-upload"
-            />
-            <label
-              htmlFor="reference-video-upload"
-              className={`flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors ${
-                isUploading || isAligning ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-            >
-              {isUploading ? (
-                <>
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                  上传中...
-                </>
-              ) : (
-                <>
-                  <Upload className="w-5 h-5" />
-                  {referenceVideo ? "更换参考视频" : "上传参考视频"}
-                </>
-              )}
-            </label>
+        <div className="ml-7">
+          <input
+            type="file"
+            accept="video/*"
+            onChange={(e) => e.target.files?.[0] && handleUploadDance(e.target.files[0])}
+            disabled={isUploadingDance || isAligning}
+            className="hidden"
+            id="dance-video-upload"
+          />
+          <label
+            htmlFor="dance-video-upload"
+            className={`flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-orange-500/50 rounded-lg cursor-pointer hover:border-orange-500 hover:bg-orange-500/5 transition-colors ${
+              isUploadingDance || isAligning ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+          >
+            {isUploadingDance ? (
+              <>
+                <RefreshCw className="w-5 h-5 animate-spin text-orange-500" />
+                <span className="text-orange-500">上传中...</span>
+              </>
+            ) : (
+              <>
+                <Upload className="w-5 h-5 text-orange-500" />
+                <span className="text-orange-500">{currentVideo ? "更换舞蹈视频" : "上传舞蹈视频"}</span>
+              </>
+            )}
           </label>
 
-          {/* 参考视频信息 */}
-          {referenceVideo && (
-            <div className="p-3 bg-secondary rounded-lg space-y-2 text-sm">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span className="font-medium">已上传参考视频</span>
+          {currentVideo && (
+            <div className="mt-2 p-2 bg-orange-500/10 rounded-lg text-xs">
+              <div className="flex items-center gap-2 text-orange-500">
+                <CheckCircle className="w-4 h-4" />
+                <span className="font-medium truncate">{currentVideo.filename}</span>
               </div>
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">文件名:</span>
-                  <span className="font-mono truncate ml-2">{referenceVideo.filename}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">时长:</span>
-                  <span className="font-mono">
-                    {Math.floor(referenceVideo.duration / 60)}:{(referenceVideo.duration % 60).toFixed(2).padStart(5, "0")}
-                  </span>
-                </div>
+              <div className="text-muted-foreground mt-1">
+                时长: {Math.floor(currentVideo.duration / 60)}:{(currentVideo.duration % 60).toFixed(1).padStart(4, "0")}
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* 对齐按钮 */}
-      {referenceVideo && (
-        <div className="space-y-3">
+      {/* 箭头 */}
+      <div className="flex justify-center">
+        <ArrowDown className="w-5 h-5 text-muted-foreground" />
+      </div>
+
+      {/* 第二步：参考视频 */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-bold">2</span>
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Music className="w-4 h-4" />
+            参考视频（高质量音频）
+          </h3>
+        </div>
+        <p className="text-xs text-muted-foreground ml-7">
+          同一首歌的MV或其他高音质视频，用来提取音频
+        </p>
+
+        <div className="ml-7">
+          <input
+            type="file"
+            accept="video/*"
+            onChange={(e) => e.target.files?.[0] && handleUploadReference(e.target.files[0])}
+            disabled={isUploadingRef || isAligning}
+            className="hidden"
+            id="reference-video-upload"
+          />
+          <label
+            htmlFor="reference-video-upload"
+            className={`flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-green-500/50 rounded-lg cursor-pointer hover:border-green-500 hover:bg-green-500/5 transition-colors ${
+              isUploadingRef || isAligning ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+          >
+            {isUploadingRef ? (
+              <>
+                <RefreshCw className="w-5 h-5 animate-spin text-green-500" />
+                <span className="text-green-500">上传中...</span>
+              </>
+            ) : (
+              <>
+                <Upload className="w-5 h-5 text-green-500" />
+                <span className="text-green-500">{referenceVideo ? "更换参考视频" : "上传参考视频"}</span>
+              </>
+            )}
+          </label>
+
+          {referenceVideo && (
+            <div className="mt-2 p-2 bg-green-500/10 rounded-lg text-xs">
+              <div className="flex items-center gap-2 text-green-500">
+                <CheckCircle className="w-4 h-4" />
+                <span className="font-medium truncate">{referenceVideo.filename}</span>
+              </div>
+              <div className="text-muted-foreground mt-1">
+                时长: {Math.floor(referenceVideo.duration / 60)}:{(referenceVideo.duration % 60).toFixed(1).padStart(4, "0")}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 箭头 */}
+      <div className="flex justify-center">
+        <ArrowDown className="w-5 h-5 text-muted-foreground" />
+      </div>
+
+      {/* 第三步：对齐按钮 */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-bold">3</span>
+          <h3 className="text-sm font-semibold">开始对齐</h3>
+        </div>
+
+        <div className="ml-7">
           <button
             onClick={handleAlignAudio}
-            disabled={isAligning}
+            disabled={!currentVideo || !referenceVideo || isAligning}
             className="w-full py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 font-medium"
           >
             {isAligning ? (
@@ -222,23 +315,22 @@ export function AudioAlignmentPanel() {
             )}
           </button>
 
-          {/* 对齐结果 */}
+          {!currentVideo && !referenceVideo && (
+            <p className="text-xs text-muted-foreground mt-2 text-center">请先上传两个视频</p>
+          )}
+          {currentVideo && !referenceVideo && (
+            <p className="text-xs text-muted-foreground mt-2 text-center">请上传参考视频</p>
+          )}
+          {!currentVideo && referenceVideo && (
+            <p className="text-xs text-muted-foreground mt-2 text-center">请上传舞蹈视频</p>
+          )}
+
           {alignResult && (
-            <div className={`p-3 rounded-lg text-sm ${alignResult.success ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"}`}>
+            <div className={`mt-3 p-3 rounded-lg text-sm ${alignResult.success ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"}`}>
               {alignResult.message}
             </div>
           )}
         </div>
-      )}
-
-      {/* 说明 */}
-      <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-xs text-blue-500 space-y-1">
-        <p className="font-medium">💡 使用说明：</p>
-        <ul className="space-y-1 ml-4 list-disc">
-          <li>参考视频应包含与舞蹈视频同一首音乐</li>
-          <li>系统会自动计算两个音频的时间偏移量</li>
-          <li>对齐后会自动下载合成后的视频</li>
-        </ul>
       </div>
     </div>
   );

@@ -19,7 +19,7 @@ from pydantic import BaseModel
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 from detect_beats import detect_beats_with_strength, beats_to_json
-from audio_alignment import align_and_replace_audio
+from audio_alignment_v4 import align_and_replace_audio
 import subprocess
 import json
 
@@ -79,7 +79,7 @@ app = FastAPI(
 # 配置 CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -321,7 +321,7 @@ async def get_video(filename: str):
 
 @app.post("/api/export", response_model=ExportResponse)
 async def export_video(request: ExportRequest):
-    """导出带节奏运镜效果的视频"""
+    """导出带节奏运镜效果的视频（带进度显示）"""
     try:
         # 验证视频文件存在
         if not os.path.exists(request.videoPath):
@@ -330,26 +330,31 @@ async def export_video(request: ExportRequest):
                 error="视频文件不存在"
             )
 
-        # 构建输出文件名
+        # 构建输出文件名（包含参数）
+        import datetime
         input_filename = Path(request.videoPath).stem
-        output_filename = f"{input_filename}_rhythm.mp4"
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"{input_filename}_rhythm_s{request.sensitivity}_z{request.zoomMin}-{request.zoomMax}_q{request.quality}_{timestamp}.mp4"
         output_path = OUTPUT_DIR / output_filename
 
-        # 构建命令 - 使用 MoviePy 版本（更可靠）
-        script_path = BASE_DIR / "scripts" / "rhythm_cam.py"
+        # 构建命令 - 使用 Remotion 版本（更流畅，无卡顿）
+        script_path = BASE_DIR / "scripts" / "rhythm_remotion.py"
+        remotion_dir = BASE_DIR / "remotion"
 
         cmd = [
             "python3",
             str(script_path),
             request.videoPath,
+            "--remotion-dir", str(remotion_dir),
             "-s", str(request.sensitivity),
             "--zoom-min", str(request.zoomMin),
             "--zoom-max", str(request.zoomMax),
             "--zoom-duration", str(request.zoomDuration),
+            "-q", str(request.quality),
             "-o", str(output_path)
         ]
 
-        # 执行导出命令
+        # 执行导出命令（实时输出）
         print(f"🎬 开始导出视频...")
         print(f"📁 输入: {request.videoPath}")
         print(f"📁 输出: {output_path}")
@@ -357,17 +362,25 @@ async def export_video(request: ExportRequest):
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            universal_newlines=True
         )
 
-        stdout, stderr = process.communicate()
+        # 实时读取输出并打印
+        for line in process.stdout:
+            line = line.strip()
+            if line:
+                print(line)  # 打印到服务器日志
 
-        if process.returncode != 0:
-            print(f"❌ 导出失败: {stderr}")
+        returncode = process.wait()
+
+        if returncode != 0:
+            print(f"❌ 导出失败 (返回码: {returncode})")
             return ExportResponse(
                 success=False,
-                error=f"导出失败: {stderr}"
+                error=f"导出失败，返回码: {returncode}"
             )
 
         print(f"✅ 导出成功: {output_path}")
@@ -379,6 +392,8 @@ async def export_video(request: ExportRequest):
 
     except Exception as e:
         print(f"❌ 导出异常: {e}")
+        import traceback
+        traceback.print_exc()
         return ExportResponse(
             success=False,
             error=f"导出异常: {str(e)}"

@@ -1,0 +1,41 @@
+{
+  "timestamp": "2026年 1月26日 星期一 12时14分36秒 CST",
+  "summary": {
+    "total": 23,
+    "passed": 23,
+    "failed": 0,
+    "success_rate": "100.0%"
+  },
+  "test_groups": [
+    {
+      "name": "模块导入",
+      "total": 3,
+      "passed": 3,
+      "failed": 0
+    },
+    {
+      "name": "音频对齐",
+      "total": 5,
+      "passed": 5,
+      "failed": 0
+    },
+    {
+      "name": "节拍检测",
+      "total": 4,
+      "passed": 4,
+      "failed": 0
+    },
+    {
+      "name": "Remotion 集成",
+      "total": 6,
+      "passed": 6,
+      "failed": 0
+    },
+    {
+      "name": "文件命名",
+      "total": 5,
+      "passed": 5,
+      "failed": 0
+    }
+  ]
+}

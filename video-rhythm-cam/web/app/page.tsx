@@ -1,356 +1,248 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import {
-  Music,
-  Video,
-  Zap,
-  Download,
-  Play,
-  Github,
-  Star,
-  ArrowRight,
-  CheckCircle2,
-  Sparkles,
-  Workflow,
-  Globe,
-} from "lucide-react";
+import { ArrowRight, Waves, Sparkles, Zap, Volume2, Music2 } from "lucide-react";
+
+// 背景装饰
+function HeroBackground() {
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      {/* Gradient Orbs */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[var(--neon-pink)] rounded-full blur-[150px] opacity-20 animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[var(--neon-cyan)] rounded-full blur-[150px] opacity-20 animate-pulse" style={{ animationDelay: '1s' }} />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[var(--neon-purple)] rounded-full blur-[200px] opacity-10" />
+      
+      {/* Grid Pattern */}
+      <div 
+        className="absolute inset-0 opacity-[0.02]"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
+          `,
+          backgroundSize: '100px 100px'
+        }}
+      />
+    </div>
+  );
+}
+
+// 波形动画
+function WaveformAnimation() {
+  return (
+    <div className="flex items-end justify-center gap-1 h-20">
+      {[...Array(20)].map((_, i) => {
+        const height = Math.sin((i / 20) * Math.PI) * 100;
+        const delay = i * 0.05;
+        return (
+          <div
+            key={i}
+            className="w-1.5 rounded-full bg-gradient-to-t from-[var(--neon-pink)] to-[var(--neon-cyan)]"
+            style={{
+              height: `${20 + height * 0.8}%`,
+              animation: `waveform 1.5s ease-in-out infinite`,
+              animationDelay: `${delay}s`,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
 
 export default function Home() {
-  const [email, setEmail] = useState("");
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
-      {/* 导航栏 */}
-      <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-lg bg-slate-950/80 border-b border-purple-500/20">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+    <main className="min-h-screen relative overflow-hidden">
+      <HeroBackground />
+      
+      {/* Navigation */}
+      <nav className="relative z-10 px-8 py-6">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-2 rounded-lg">
-              <Music className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--neon-pink)] to-[var(--neon-purple)] flex items-center justify-center">
+              <Waves className="w-5 h-5 text-white" />
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">Video Rhythm Cam</h1>
-              <p className="text-xs text-purple-300">让你的视频随音乐律动</p>
-            </div>
+            <span className="text-xl font-bold gradient-text">PIPI</span>
           </div>
-
-          <div className="flex items-center gap-6">
-            <Link
-              href="/docs"
-              className="text-sm text-gray-300 hover:text-white transition-colors"
-            >
-              文档
-            </Link>
-            <Link
-              href="/workbench"
-              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-            >
-              <Play className="w-4 h-4" />
-              开始使用
-            </Link>
-            <a
-              href="https://github.com/wuhuanqi/video-rhythm-cam"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-300 hover:text-white transition-colors"
-            >
-              <Github className="w-5 h-5" />
-            </a>
-          </div>
+          
+          <Link
+            href="/workbench"
+            className="px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 hover:text-white transition-all text-sm font-medium"
+          >
+            进入工作台
+          </Link>
         </div>
       </nav>
 
-      {/* Hero 区域 */}
-      <section className="pt-32 pb-20 px-4">
-        <div className="container mx-auto text-center">
-          {/* 徽章 */}
-          <div className="inline-flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 rounded-full px-4 py-2 mb-8">
-            <Sparkles className="w-4 h-4 text-purple-400" />
-            <span className="text-sm text-purple-300">
-              开源 · 免费 · 基于 Remotion 4.0
-            </span>
+      {/* Hero Section */}
+      <section className="relative z-10 px-8 pt-20 pb-32">
+        <div className="max-w-5xl mx-auto text-center">
+          
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8">
+            <Sparkles className="w-4 h-4 text-[var(--neon-cyan)]" />
+            <span className="text-sm text-white/60">AI 驱动的音频处理工具</span>
           </div>
 
-          {/* 标题 */}
-          <h1 className="text-6xl md:text-7xl font-bold text-white mb-6 leading-tight">
-            让视频
-            <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
-              {" "}随音乐律动
-            </span>
+          {/* Main Headline */}
+          <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold leading-[1.1] mb-8">
+            <span className="text-white">用</span>
+            <span className="text-[var(--neon-cyan)] text-glow-cyan">完美音质</span>
+            <br />
+            <span className="text-white">替换你的</span>
+            <span className="text-[var(--neon-pink)] text-glow-pink">舞蹈视频</span>
           </h1>
 
-          {/* 副标题 */}
-          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-            自动识别音乐节拍，智能添加动态运镜效果。
-            <br />
-            让你的舞蹈、健身、音乐视频瞬间变得专业。
+          {/* Subheadline */}
+          <p className="text-xl md:text-2xl text-white/40 max-w-2xl mx-auto mb-12 leading-relaxed">
+            上传舞蹈视频和高质量音源，
+            <br className="hidden md:block" />
+            AI 自动分析频谱，精准对齐每一个卡点
           </p>
 
-          {/* CTA 按钮 */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <Link
-              href="/workbench"
-              className="group bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 flex items-center justify-center gap-2"
-            >
-              <Play className="w-5 h-5" />
-              立即体验
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
-
-            <a
-              href="https://github.com/wuhuanqi/video-rhythm-cam"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-slate-800 hover:bg-slate-700 text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all border border-slate-700 flex items-center justify-center gap-2"
-            >
-              <Github className="w-5 h-5" />
-              GitHub
-            </a>
+          {/* Waveform Animation */}
+          <div className="mb-12">
+            <WaveformAnimation />
           </div>
 
-          {/* 统计数据 */}
-          <div className="flex flex-wrap justify-center gap-8 text-sm text-gray-400">
-            <div className="flex items-center gap-2">
-              <Star className="w-5 h-5 text-yellow-500" />
-              <span>开源免费</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Download className="w-5 h-5 text-purple-500" />
-              <span>基于 Remotion 4.0</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Globe className="w-5 h-5 text-blue-500" />
-              <span>支持所有视频格式</span>
-            </div>
-          </div>
+          {/* CTA Button */}
+          <Link
+            href="/workbench"
+            className="group inline-flex items-center gap-3 px-10 py-5 rounded-2xl btn-action text-white text-xl"
+          >
+            <Zap className="w-6 h-6" />
+            <span>开始使用</span>
+            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+          </Link>
+
         </div>
       </section>
 
-      {/* 功能特性 */}
-      <section className="py-20 px-4 bg-slate-900/50">
-        <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">
-              强大的功能特性
-            </h2>
-            <p className="text-gray-400 text-lg">
-              一切都为了让你的视频更加出色
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {/* 特性 1 */}
-            <div className="bg-slate-800/50 backdrop-blur-lg border border-slate-700 rounded-2xl p-8 hover:border-purple-500/50 transition-all group">
-              <div className="bg-purple-500/10 w-14 h-14 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Music className="w-7 h-7 text-purple-400" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">
-                智能节奏检测
-              </h3>
-              <p className="text-gray-400 leading-relaxed">
-                使用 librosa 自动识别音乐节拍点，精准捕捉每一拍。
-                区分重拍和弱拍，让效果更有层次感。
-              </p>
-            </div>
-
-            {/* 特性 2 */}
-            <div className="bg-slate-800/50 backdrop-blur-lg border border-slate-700 rounded-2xl p-8 hover:border-pink-500/50 transition-all group">
-              <div className="bg-pink-500/10 w-14 h-14 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Video className="w-7 h-7 text-pink-400" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">
-                动态运镜效果
-              </h3>
-              <p className="text-gray-400 leading-relaxed">
-                在节拍处自动应用缩放效果，画面随音乐律动。
-                基于 Remotion 4.0 渲染，输出高质量 MP4 视频。
-              </p>
-            </div>
-
-            {/* 特性 3 */}
-            <div className="bg-slate-800/50 backdrop-blur-lg border border-slate-700 rounded-2xl p-8 hover:border-blue-500/50 transition-all group">
-              <div className="bg-blue-500/10 w-14 h-14 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Zap className="w-7 h-7 text-blue-400" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">
-                简单易用
-              </h3>
-              <p className="text-gray-400 leading-relaxed">
-                一行命令即可生成效果。支持批量处理，
-                高质量输出。预览功能实时查看效果。
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 使用场景 */}
-      <section className="py-20 px-4">
-        <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">
-              适用于多种场景
-            </h2>
-            <p className="text-gray-400 text-lg">
-              无论你想做什么样的视频，都能轻松驾驭
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Features Section */}
+      <section className="relative z-10 px-8 py-20">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6">
             {[
-              { emoji: "💃", title: "舞蹈视频", desc: "让舞蹈动作更富有节奏感" },
-              { emoji: "🏋️", title: "健身视频", desc: "配合音乐展现训练节奏" },
-              { emoji: "🎤", title: "音乐视频", desc: "为 MV 添加专业运镜" },
-              { emoji: "🎪", title: "表演视频", desc: "突出精彩瞬间" },
-            ].map((item, index) => (
+              {
+                icon: Waves,
+                title: "频谱分析",
+                desc: "使用 AI 算法分析音频波形特征，自动识别节拍位置",
+                color: "pink"
+              },
+              {
+                icon: Zap,
+                title: "智能对齐",
+                desc: "通过交叉相关算法精准匹配，确保每个卡点完美同步",
+                color: "purple"
+              },
+              {
+                icon: Volume2,
+                title: "无损替换",
+                desc: "保持原视频画质不变，仅替换音频轨道",
+                color: "cyan"
+              }
+            ].map((feature, i) => (
               <div
-                key={index}
-                className="bg-slate-800/30 backdrop-blur-lg border border-slate-700 rounded-xl p-6 text-center hover:border-purple-500/30 hover:bg-slate-800/50 transition-all"
+                key={i}
+                className="glass rounded-3xl p-8 hover:bg-white/[0.04] transition-all group"
               >
-                <div className="text-5xl mb-4">{item.emoji}</div>
-                <h3 className="text-lg font-bold text-white mb-2">
-                  {item.title}
-                </h3>
-                <p className="text-sm text-gray-400">{item.desc}</p>
+                <div 
+                  className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 ${
+                    feature.color === 'pink' ? 'bg-[var(--neon-pink)]/10' :
+                    feature.color === 'purple' ? 'bg-[var(--neon-purple)]/10' :
+                    'bg-[var(--neon-cyan)]/10'
+                  }`}
+                >
+                  <feature.icon 
+                    className={`w-7 h-7 ${
+                      feature.color === 'pink' ? 'text-[var(--neon-pink)]' :
+                      feature.color === 'purple' ? 'text-[var(--neon-purple)]' :
+                      'text-[var(--neon-cyan)]'
+                    }`} 
+                  />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-3">{feature.title}</h3>
+                <p className="text-white/40 leading-relaxed">{feature.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* 快速开始 */}
-      <section className="py-20 px-4 bg-slate-900/50">
-        <div className="container mx-auto">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-white mb-4">
-                快速开始
-              </h2>
-              <p className="text-gray-400 text-lg">
-                只需 3 步，即可让你的视频动起来
-              </p>
-            </div>
+      {/* How it Works */}
+      <section className="relative z-10 px-8 py-20">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">
+            <span className="text-white">简单</span>
+            <span className="gradient-text ml-2">三步</span>
+            <span className="text-white">，完成音频对齐</span>
+          </h2>
 
-            <div className="space-y-6">
-              {[
-                {
-                  step: "01",
-                  title: "安装依赖",
-                  code: "pip install librosa soundfile",
-                  desc: "安装 Python 依赖包",
-                },
-                {
-                  step: "02",
-                  title: "运行处理",
-                  code: "python rhythm_remotion.py dance.mp4",
-                  desc: "一行命令，自动处理视频",
-                },
-                {
-                  step: "03",
-                  title: "享受效果",
-                  code: "output.mp4",
-                  desc: "得到带节奏运镜的视频",
-                },
-              ].map((item, index) => (
-                <div
-                  key={index}
-                  className="bg-slate-800/50 backdrop-blur-lg border border-slate-700 rounded-2xl p-6 hover:border-purple-500/30 transition-all"
+          <div className="space-y-8">
+            {[
+              {
+                step: "01",
+                title: "上传舞蹈视频",
+                desc: "你自己拍摄的舞蹈视频，音质可能不太好",
+                color: "pink"
+              },
+              {
+                step: "02", 
+                title: "上传参考音源",
+                desc: "同一首歌的 MV 或高音质视频",
+                color: "cyan"
+              },
+              {
+                step: "03",
+                title: "自动对齐输出",
+                desc: "AI 分析频谱，精准对齐，输出高质量音频的舞蹈视频",
+                color: "purple"
+              }
+            ].map((item, i) => (
+              <div
+                key={i}
+                className="flex items-start gap-6 glass rounded-2xl p-6"
+              >
+                <div 
+                  className={`text-5xl font-bold font-mono ${
+                    item.color === 'pink' ? 'text-[var(--neon-pink)]/30' :
+                    item.color === 'cyan' ? 'text-[var(--neon-cyan)]/30' :
+                    'text-[var(--neon-purple)]/30'
+                  }`}
                 >
-                  <div className="flex items-start gap-6">
-                    <div className="text-4xl font-bold text-purple-500/30">
-                      {item.step}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-white mb-2">
-                        {item.title}
-                      </h3>
-                      <p className="text-gray-400 mb-4">{item.desc}</p>
-                      <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm text-purple-300 overflow-x-auto">
-                        {item.code}
-                      </div>
-                    </div>
-                    <CheckCircle2 className="w-6 h-6 text-green-500 flex-shrink-0" />
-                  </div>
+                  {item.step}
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA 区域 */}
-      <section className="py-20 px-4">
-        <div className="container mx-auto">
-          <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 backdrop-blur-lg border border-purple-500/30 rounded-3xl p-12 text-center">
-            <h2 className="text-4xl font-bold text-white mb-4">
-              准备好了吗？
-            </h2>
-            <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-              立即体验 Video Rhythm Cam，让你的视频随音乐律动起来
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/workbench"
-                className="bg-white text-slate-900 hover:bg-gray-100 px-8 py-4 rounded-xl text-lg font-semibold transition-all flex items-center justify-center gap-2"
-              >
-                <Play className="w-5 h-5" />
-                在线体验
-              </Link>
-              <Link
-                href="/docs"
-                className="bg-slate-800 hover:bg-slate-700 text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all border border-slate-700 flex items-center justify-center gap-2"
-              >
-                <Workflow className="w-5 h-5" />
-                查看文档
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 页脚 */}
-      <footer className="py-12 px-4 border-t border-slate-800">
-        <div className="container mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-2 rounded-lg">
-                <Music className="w-5 h-5 text-white" />
+                <div>
+                  <h3 className="text-xl font-semibold text-white mb-2">{item.title}</h3>
+                  <p className="text-white/40">{item.desc}</p>
+                </div>
               </div>
-              <span className="text-white font-semibold">
-                Video Rhythm Cam
-              </span>
-            </div>
-
-            <div className="text-sm text-gray-400">
-              基于{" "}
-              <a
-                href="https://www.remotion.dev/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-purple-400 hover:text-purple-300"
-              >
-                Remotion 4.0
-              </a>{" "}
-              构建
-            </div>
-
-            <div className="flex items-center gap-4">
-              <a
-                href="https://github.com/wuhuanqi/video-rhythm-cam"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <Github className="w-5 h-5" />
-              </a>
-              <span className="text-sm text-gray-400">
-                © 2026 Video Rhythm Cam
-              </span>
-            </div>
+            ))}
           </div>
+
+          {/* Final CTA */}
+          <div className="text-center mt-16">
+            <Link
+              href="/workbench"
+              className="inline-flex items-center gap-3 px-8 py-4 rounded-xl bg-white text-black font-semibold hover:bg-white/90 transition-colors"
+            >
+              <Music2 className="w-5 h-5" />
+              <span>立即体验</span>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="relative z-10 px-8 py-8 border-t border-white/5">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Waves className="w-5 h-5 text-white/40" />
+            <span className="text-white/40 text-sm">PIPI Audio Sync</span>
+          </div>
+          <p className="text-white/20 text-sm">AI-Powered Audio Alignment</p>
         </div>
       </footer>
-    </div>
+    </main>
   );
 }
