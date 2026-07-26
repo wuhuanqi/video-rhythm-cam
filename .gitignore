@@ -1,0 +1,10 @@
+
+# media files
+*.mp4
+*.mov
+*.avi
+*.wav
+*.m4a
+*.aac
+*.flac
+uploads/
