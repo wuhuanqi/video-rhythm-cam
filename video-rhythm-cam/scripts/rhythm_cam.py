@@ -377,6 +377,10 @@ def main():
                        help='最大缩放比例 (默认: 1.3)')
     parser.add_argument('--zoom-duration', type=float, default=0.2,
                        help='缩放持续时间(秒) (默认: 0.2)')
+    parser.add_argument('--align', metavar='参考视频/音频',
+                       help='先对齐: 用参考音视频裁剪原版后, 再处理节奏')
+    parser.add_argument('--align-only', action='store_true',
+                       help='仅对齐, 不处理节奏')
 
     args = parser.parse_args()
 
@@ -385,15 +389,43 @@ def main():
         sys.exit(1)
 
     # 设置输出路径
-    if args.output:
-        output_path = args.output
-    else:
+    output_path = args.output
+    if not output_path:
         base, _ = os.path.splitext(args.video)
         output_path = f"{base}_rhythm.mp4"
 
-    # 处理视频
+    video_path = args.video
+
+    # ═══ 对齐步骤 ═══
+    if args.align:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        sys.path.insert(0, script_dir)
+        import importlib
+        align_mod = importlib.import_module('align')
+        importlib.reload(align_mod)
+        co, cr, conf, algo, _ = align_mod.find_alignment(args.video, args.align)
+        print(f"🎯 对齐: 原版={args.video}  参考={args.align}")
+        print(f"   结果: 裁原={co:.3f}s 裁参={cr:.3f}s  conf={conf:.2%}  [{algo}]")
+
+        if args.align_only:
+            # 仅对齐, 输出 aligned 文件
+            align_out = output_path.replace('_rhythm.mp4', '_aligned.mp4')
+            if align_out == output_path:
+                align_out = f"{os.path.splitext(output_path)[0]}_aligned.mp4"
+            align_mod.produce(args.video, args.align, align_out, co, cr)
+            print(f"✅ 对齐完成: {align_out}")
+            sys.exit(0)
+
+        # 对齐后处理节奏: 先生成对齐文件
+        aligned_dir = tempfile.mkdtemp()
+        aligned_path = os.path.join(aligned_dir, "aligned.mp4")
+        align_mod.produce(args.video, args.align, aligned_path, co, cr)
+        print(f"  对齐中间文件: {aligned_path}")
+        video_path = aligned_path
+
+    # ═══ 节奏处理 ═══
     success = process_video(
-        args.video,
+        video_path,
         output_path,
         sensitivity=args.sensitivity,
         zoom_min=args.zoom_min,
