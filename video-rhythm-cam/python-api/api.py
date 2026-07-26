@@ -19,7 +19,7 @@ from pydantic import BaseModel
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 from detect_beats import detect_beats_with_strength, beats_to_json
-from audio_alignment_v4 import align_and_replace_audio
+from audio_alignment_v8 import align_and_replace_audio
 import subprocess
 import json
 
