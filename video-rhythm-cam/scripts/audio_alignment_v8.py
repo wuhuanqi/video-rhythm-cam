@@ -176,6 +176,55 @@ def produce(orig_video, ref_video, output, cut_orig, cut_ref, stretch_rate=1.0, 
     return True
 
 
+def _stream_copy_produce(orig_video, ref_video, output, cut_orig, cut_ref, stretch_rate=1.0, sr=22050):
+    """用 FFmpeg 流复制合成 — 视频零质量损失"""
+    import subprocess, tempfile as _tf
+    from pathlib import Path
+
+    yr, _ = librosa.load(ref_video, sr=sr)
+    if abs(stretch_rate - 1.0) > 0.005:
+        yr = librosa.effects.time_stretch(y=yr, rate=stretch_rate)
+
+    rs = int(cut_ref * sr)
+    # 获取视频原时长
+    probe = subprocess.run(["ffprobe", "-v", "error", "-show_entries",
+                            "format=duration", "-of", "csv=p=0", orig_video],
+                           capture_output=True, text=True)
+    orig_dur = float(probe.stdout.strip())
+    leftover = max(0, orig_dur - cut_orig)
+    take = min(len(yr) - rs, int(leftover * sr))
+    if take <= 0:
+        return False
+
+    audio_data = yr[rs:rs + take]
+    audio_wav = _tf.mktemp(suffix=".wav")
+    audio_aac = _tf.mktemp(suffix=".aac")
+    sf.write(audio_wav, audio_data, sr)
+
+    # Step 1: 裁剪视频 (流复制, 不重编码)
+    video_cut = _tf.mktemp(suffix=".mp4")
+    subprocess.run(["ffmpeg", "-i", orig_video, "-ss", str(cut_orig),
+                    "-c:v", "copy", "-an", "-y", video_cut],
+                   capture_output=True)
+
+    # Step 2: 音频转 AAC
+    subprocess.run(["ffmpeg", "-i", audio_wav,
+                    "-c:a", "aac", "-b:a", "320k", "-y", audio_aac],
+                   capture_output=True)
+
+    # Step 3: 合并 (视频流复制, 用新音频)
+    subprocess.run(["ffmpeg", "-i", video_cut, "-i", audio_aac,
+                    "-c:v", "copy", "-c:a", "copy",
+                    "-map", "0:v:0", "-map", "1:a:0",
+                    "-shortest", "-y", output],
+                   capture_output=True)
+
+    os.unlink(audio_wav)
+    os.unlink(audio_aac)
+    os.unlink(video_cut)
+    return True
+
+
 def align_and_replace_audio(dance_video_path, reference_video_path, output_video_path, max_offset=60.0):
     """
     V4 兼容接口 — 供 API 使用
@@ -184,7 +233,7 @@ def align_and_replace_audio(dance_video_path, reference_video_path, output_video
     cut_orig, cut_ref, conf, stretch = find_alignment(dance_video_path, reference_video_path)
     if conf < 0.15:
         return False, 0.0
-    ok = produce(dance_video_path, reference_video_path, output_video_path, cut_orig, cut_ref, stretch)
+    ok = _stream_copy_produce(dance_video_path, reference_video_path, output_video_path, cut_orig, cut_ref, stretch)
     return ok, cut_orig
 
 
@@ -208,7 +257,7 @@ def process(label, orig, ref, output, crop_only=False):
           f"总计: {cut_orig+cut_ref:.3f}s  置信度: {conf:.2%}{extra}")
 
     if not crop_only and conf > 0.15:
-        ok = produce(orig, ref, output, cut_orig, cut_ref, stretch)
+        ok = _stream_copy_produce(orig, ref, output, cut_orig, cut_ref, stretch)
         print(f"  {'✅' if ok else '❌'} {output}")
     elif crop_only:
         print(f"  (仅查看)")
